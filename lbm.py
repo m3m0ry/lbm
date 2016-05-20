@@ -5,12 +5,15 @@ def init():
     pass
 
 
-def streaming():
-    pass
+def streaming(f: np.array, e: np.array) -> np.array:
+    fout = f
+    for i in range(len(e)):
+        fout[i, :, :] = np.roll(np.roll(f[i, :, :], e[i, 0], axis=0), e[i, 1], axis=1)
+    return fout
 
 
-def collision():
-    pass
+def collision(f, feq, t):
+    return f - 1./t *[f - feq]
 
 
 def equilibrium(p, e, u, w, c):
