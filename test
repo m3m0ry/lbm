@@ -1,0 +1,13 @@
+xlength           200
+ylength           100
+init_velocity_x       0
+init_velocity_y       0.
+init_density          1.
+omega                 0.2
+alpha       10.0e+4
+file test.file #comment
+north_side  dirichlet#comment
+# comment
+#comment
+broken # comment
+broken

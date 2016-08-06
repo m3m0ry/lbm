@@ -1,2 +1,2 @@
 # lbm
-lbm pythonish playground
+lbm julia playground
