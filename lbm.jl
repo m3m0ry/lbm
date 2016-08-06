@@ -20,46 +20,54 @@ end
 
 
 function density(array, x, y)
-    return sum(array[x,y,:])
+    return sum(array[:,x,y])
 end
 
 function density(array)
-    return sum(array,3)
+    return sum(array,1)
 end
 
 
 function velocity(array, x, y, rho)
-    return sum(array[x,y,:] * c)/rho
+    return (c * array[:,x,y])/rho
 end
 
-function equilibrium(rho, u, c, w)
-    cu = cell(size(c,2))
-    for i = 1:size(c,2)
+function equilibrium(rho, u)
+    cu = Array(Float64, q)
+    for i = 1:q
         cu[i] = 3 * dot(c[:,i],u)
     end
     usqr = 3/2 * dot(u,u)
-    feq = cell(size(c,2))
-    for i = 1:size(c,2)
-        feq[i] = w[i]*rho(1+cu[i]+0.5*cu[i]^2 - usqr)
+    feq = Array(Float64, q)
+    for i = 1:q
+        feq[i] = w[i]*rho*(1+cu[i]+0.5*cu[i]^2 - usqr)
     end
+    return feq
 end
 
-function stream!(src, dsc, c)
-    for i = 1:size(c,2)
-        dsc[:,:,i] = circshift(src[:,:,i], -c[:,i])
+function stream!(src, dsc)
+    for i = 1:q
+        dsc[i,:,:] = circshift(src[i,:,:], -c[:,i])
     end
 end
 
 function collision!(array, c, omega, w)
     rho = density(array)
-    for x = 1:size(array,1)
-        for y = 1:size(array,2)
+    rho = reshape(rho, x_length, y_length)
+    for x = 1:x_length
+        for y = 1:y_length
             u = velocity(array, x, y, rho[x,y])
-            feq = equilibrium(rho[x,y], u, c, w)
-            array[x,y,:] = array[x,y,:] - omega * (array[x,y,:] - feq[:])
+            feq = equilibrium(rho[x,y], u)
+            array[:,x,y] = array[:,x,y] - omega * (array[:,x,y] - feq[:])
         end
     end
 end
+
+
+function boundary!(array)
+
+end
+
 
 c = [0 1 0 -1 0 1 -1 -1 1; 0 0 1 0 1 1 1 0 0]
 w = [4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36]
@@ -70,18 +78,26 @@ print_parameters(parameters)
 omega = parse(Float64, parameters["omega"])
 
 println("c: $c")
+println("q: $q")
 
-x = parse(Int, parameters["xlength"])
-y = parse(Int, parameters["ylength"])
+x_length = parse(Int, parameters["xlength"])
+y_length = parse(Int, parameters["ylength"])
 
-src = Array(Float64, x, y, size(c,2))
-dsc = Array(Float64, x, y, size(c,2))
+src = Array(Float64, q, x_length, y_length)
+dsc = Array(Float64, q, x_length, y_length)
+
+# Init
+feq = equilibrium(1.0,[0.0,0.0])
+for x = 1:x_length
+    for y = 1:y_length
+        src[:,x,y] = feq[:]
+    end
+end
 
 
-while true
-    stream!(src, dsc, c)
+for i = 1:100
+    println("Iteration: $i")
+    stream!(src, dsc)
     collision!(dsc, c, omega, w)
-    tmp = src
-    src = dsc
-    dsc = tmp
+    dsc, src = src, dsc
 end
