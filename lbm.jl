@@ -1,3 +1,6 @@
+using WriteVTK, Images, ImageView
+
+
 function getparameters(filename::AbstractString)
     f = open(filename,"r")
     dict = Dict{AbstractString, AbstractString}()
@@ -24,7 +27,7 @@ function density(array, x, y)
 end
 
 function density(array)
-    return sum(array,1)
+    return squeeze(sum(array,1),1)
 end
 
 
@@ -65,6 +68,17 @@ end
 
 
 function boundary!(array)
+    array[:,1,:] = array[:,x_length-1,:]
+    array[:,x_length,:] = array[:,2,:]
+
+    array[:,:,1] = array[:,:,y_length-1]
+    array[:,:,y_length] = array[:,:,2]
+end
+
+function obstacles!(f, obstacles)
+end
+
+function visualization(array)
 
 end
 
@@ -73,21 +87,24 @@ c = [0 1 0 -1 0 1 -1 -1 1; 0 0 1 0 1 1 1 0 0]
 w = [4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36]
 q = size(c,2)
 
-parameters = getparameters("test")
+parameters = getparameters(ARGS[1])
+img = raw(load(ARGS[2]))
+view(img)
+obstacles = reinterpret(Bool, img)
 print_parameters(parameters)
 omega = parse(Float64, parameters["omega"])
 
 println("c: $c")
 println("q: $q")
 
-x_length = parse(Int, parameters["xlength"])
-y_length = parse(Int, parameters["ylength"])
+x_length = size(img, 1)
+y_length = size(img, 2)
 
 src = Array(Float64, q, x_length, y_length)
 dsc = Array(Float64, q, x_length, y_length)
 
 # Init
-feq = equilibrium(1.0,[0.0,0.0])
+feq = equilibrium(1.0,[0.1,0.0])
 for x = 1:x_length
     for y = 1:y_length
         src[:,x,y] = feq[:]
@@ -97,7 +114,9 @@ end
 
 for i = 1:100
     println("Iteration: $i")
+    boundary!(src)
     stream!(src, dsc)
     collision!(dsc, c, omega, w)
+    visualization(dsc)
     dsc, src = src, dsc
 end
