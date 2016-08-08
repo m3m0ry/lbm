@@ -1,4 +1,4 @@
-using WriteVTK, Images, ImageView
+using WriteVTK, Images
 
 
 function getparameters(filename::AbstractString)
@@ -15,9 +15,9 @@ function getparameters(filename::AbstractString)
 end
 
 function print_parameters(parameters)
-    println("Parameters")
+    println("Parameters:")
     for (key, value) in parameters
-        println("$key ==> $value")
+        println("\t$key ==> $value")
     end
 end
 
@@ -76,10 +76,16 @@ function boundary!(array)
 end
 
 function obstacles!(f, obstacles)
+    i = 0
+    for x in obstacles
+        if x == true
+            i+=1
+        end
+    end
+    return i
 end
 
 function visualization(array)
-
 end
 
 
@@ -88,20 +94,23 @@ w = [4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36]
 q = size(c,2)
 
 parameters = getparameters(ARGS[1])
-img = raw(load(ARGS[2]))
-view(img)
-obstacles = reinterpret(Bool, img)
+#img = raw(load(ARGS[2]))
+img = load(ARGS[2])
+obstacles = map(Bool, img) # todo reverse true/false
 print_parameters(parameters)
 omega = parse(Float64, parameters["omega"])
 
 println("c: $c")
 println("q: $q")
 
-x_length = size(img, 1)
-y_length = size(img, 2)
+x_length = size(obstacles, 1)
+y_length = size(obstacles, 2)
 
-src = Array(Float64, q, x_length, y_length)
-dsc = Array(Float64, q, x_length, y_length)
+println("x_length = $x_length")
+println("y_length = $y_length")
+
+src = Array(Float64, q, x_length+2, y_length+2)
+dsc = copy(src)
 
 # Init
 feq = equilibrium(1.0,[0.1,0.0])
@@ -111,10 +120,15 @@ for x = 1:x_length
     end
 end
 
+println(obstacles!(src, obstacles))
+exit()
 
+
+# Time loop
 for i = 1:100
     println("Iteration: $i")
     boundary!(src)
+    obstacles!(src,obstacles)
     stream!(src, dsc)
     collision!(dsc, c, omega, w)
     visualization(dsc)
