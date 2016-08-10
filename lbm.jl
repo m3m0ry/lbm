@@ -56,18 +56,15 @@ end
 
 function collision!(array, c, omega, w)
     rho = density(array)
-    rho = reshape(rho, x_length, y_length)
-    for x = 1:x_length
-        for y = 1:y_length
-            u = velocity(array, x, y, rho[x,y])
-            feq = equilibrium(rho[x,y], u)
-            array[:,x,y] = array[:,x,y] - omega * (array[:,x,y] - feq[:])
-        end
+    for x = 1:x_length, y = 1:y_length
+        u = velocity(array, x, y, rho[x,y])
+        feq = equilibrium(rho[x,y], u)
+        array[:,x,y] = array[:,x,y] - omega * (array[:,x,y] - feq[:])
     end
 end
 
 
-function boundary!(array)
+function boundary!(array) #so far only periodic
     array[:,1,:] = array[:,x_length-1,:]
     array[:,x_length,:] = array[:,2,:]
 
@@ -75,23 +72,47 @@ function boundary!(array)
     array[:,:,y_length] = array[:,:,2]
 end
 
+function findfirstcolumn(A, v)
+    index = findfirst(A[1,:],v[1])
+    found = false
+    while index != 0 && found == false
+        found = true
+        for i = 2:size(v)[1]
+            if A[i,index] != v[i]
+                found = false
+                break
+            end
+        end
+        if found == true
+            return index
+        end
+        index = findnext(A[1,:], v[1], index+1)
+    end
+    return 0
+end
+
 function obstacles!(f, obstacles)
-    i = 0
-    for x in obstacles
-        if x == true
-            i+=1
+    for x in 1:size(obstacles,1), y in 1:size(obstacles,2) 
+        if obstacles[x,y] == true
+            for i = 1:q
+                f[i,x+1,y+1] = f[noslip[i], x+c[1]+1, y+c[2]+1]
+            end
         end
     end
-    return i
 end
 
 function visualization(array)
 end
 
 
-c = [0 1 0 -1 0 1 -1 -1 1; 0 0 1 0 1 1 1 0 0]
+c = [0 1 0 -1 0 1 -1 -1 1; 0 0 1 0 -1 1 1 -1 -1]
 w = [4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36]
 q = size(c,2)
+
+noslip = Array(Int, q)
+for i=1:q
+    noslip[i] = findfirstcolumn(c, -c[:,i])
+end
 
 parameters = getparameters(ARGS[1])
 #img = raw(load(ARGS[2]))
@@ -110,7 +131,7 @@ println("x_length = $x_length")
 println("y_length = $y_length")
 
 src = Array(Float64, q, x_length+2, y_length+2)
-dsc = copy(src)
+dsc = similar(src)
 
 # Init
 feq = equilibrium(1.0,[0.1,0.0])
@@ -120,13 +141,9 @@ for x = 1:x_length
     end
 end
 
-println(obstacles!(src, obstacles))
-exit()
-
-
 # Time loop
 for i = 1:100
-    println("Iteration: $i")
+    @show i
     boundary!(src)
     obstacles!(src,obstacles)
     stream!(src, dsc)
